@@ -75,8 +75,8 @@ public sealed class MatchRecord
 
 public sealed class Config
 {
-    /// <summary>Idioma de la interfaz. La aplicación solo está en español: se guarda por compatibilidad.</summary>
-    public string? Language { get; set; } = "es";
+    /// <summary>호환성을 위해 저장하는 인터페이스 언어입니다.</summary>
+    public string? Language { get; set; } = "ko";
 
     /// <summary>Selected profile (Epic id or name of the account the player plays on); null = most recent one.</summary>
     public string? Profile { get; set; }
@@ -85,8 +85,6 @@ public sealed class Config
     /// <summary>Open the tool automatically when Fortnite starts (invisible standby process started with Windows).</summary>
     public bool StartWithFortnite { get; set; }
 
-    /// <summary>"prompt" (offer new versions), "auto" (install them) or "off" (never check GitHub).</summary>
-    public string UpdateMode { get; set; } = "prompt";
     public bool OpenReportOnStart { get; set; } = true;
     public int? OverlayX { get; set; }
     public int? OverlayY { get; set; }

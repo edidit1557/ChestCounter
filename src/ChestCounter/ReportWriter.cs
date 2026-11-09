@@ -10,17 +10,17 @@ public static class Pretty
     {
         if (string.IsNullOrEmpty(playlist))
         {
-            return L.T("modo desconocido", "unknown mode");
+            return L.T("modo desconocido", "unknown mode", "알 수 없는 모드");
         }
 
         var p = playlist.ToLowerInvariant();
         var parts = new List<string>();
-        if (p.Contains("habanero") || p.Contains("ranked")) parts.Add(L.T("Clasificatoria", "Ranked"));
-        if (p.Contains("nobuild")) parts.Add(L.T("Cero construcción", "Zero Build"));
+        if (p.Contains("habanero") || p.Contains("ranked")) parts.Add(L.T("Clasificatoria", "Ranked", "랭크"));
+        if (p.Contains("nobuild")) parts.Add(L.T("Cero construcción", "Zero Build", "제로 빌드"));
         if (p.Contains("solo")) parts.Add("Solo");
-        else if (p.Contains("duo")) parts.Add(L.T("Dúo", "Duos"));
-        else if (p.Contains("trio")) parts.Add(L.T("Trío", "Trios"));
-        else if (p.Contains("squad")) parts.Add(L.T("Escuadrón", "Squads"));
+        else if (p.Contains("duo")) parts.Add(L.T("Dúo", "Duos", "듀오"));
+        else if (p.Contains("trio")) parts.Add(L.T("Trío", "Trios", "트리오"));
+        else if (p.Contains("squad")) parts.Add(L.T("Escuadrón", "Squads", "스쿼드"));
         return parts.Count > 0 ? string.Join(" · ", parts) : playlist.Replace("Playlist_", "");
     }
 
@@ -28,15 +28,15 @@ public static class Pretty
     {
         if (m.Placement is not int place || place <= 0)
         {
-            return L.T("puesto desconocido", "unknown placement");
+            return L.T("puesto desconocido", "unknown placement", "순위 미상");
         }
         if (place == 1)
         {
-            return L.T("¡Victoria Real!", "Victory Royale!");
+            return L.T("¡Victoria Real!", "Victory Royale!", "빅토리 로얄!");
         }
         var ordinal = L.Ordinal(place);
         return m.TotalPlayers is int total && total > 0
-            ? (L.En ? $"{ordinal} of {total}" : $"{ordinal} de {total}")
+            ? (L.Ko ? $"{total}명 중 {ordinal}" : L.En ? $"{ordinal} of {total}" : $"{ordinal} de {total}")
             : ordinal;
     }
 
@@ -51,13 +51,13 @@ public static class Pretty
     {
         if (f.ObtainedAtSeconds is not float t)
         {
-            return L.T("momento y origen desconocidos", "time and source unknown");
+            return L.T("momento y origen desconocidos", "time and source unknown", "시각 및 출처 미상");
         }
-        var when = f.TimeExact ? $"{L.T("a las", "at")} {Clock(t)}" : $"{L.T("hacia las", "around")} {Clock(t)}";
+        var when = f.TimeExact ? $"{L.T("a las", "at", "")} {Clock(t)}" : $"{L.T("hacia las", "around", "약")} {Clock(t)}";
         return f.SourceCertain ? $"{when} · {f.SourceLabel}" : $"{when} · {f.SourceLabel} ({Likely})";
     }
 
-    public static string Likely => L.T("probable", "likely");
+    public static string Likely => L.T("probable", "likely", "추정");
 
     public static string ItemName(string item)
     {
@@ -105,7 +105,7 @@ public static class ReportWriter
         }
         catch (Exception ex)
         {
-            Console.WriteLine(L.T($"No se pudo escribir el informe: {ex.Message}", $"Cannot write the report: {ex.Message}"));
+            Console.WriteLine(L.T($"No se pudo escribir el informe: {ex.Message}", $"Cannot write the report: {ex.Message}", $"리포트를 쓸 수 없습니다: {ex.Message}"));
         }
     }
 
@@ -271,9 +271,10 @@ public static class ReportWriter
         string N(int n) => n.ToString("#,0", Loc);
 
         var sb = new StringBuilder();
-        var title = L.T("Contador de cofres", "Chest Counter");
+        var title = L.T("Contador de cofres", "Chest Counter", "상자 카운터");
         var updated = L.T($"Actualizado {DateTime.Now.ToString("dd/MM/yyyy HH:mm", Loc)} · en directo",
-            $"Updated {DateTime.Now.ToString("MMM d, yyyy HH:mm", Loc)} · live");
+            $"Updated {DateTime.Now.ToString("MMM d, yyyy HH:mm", Loc)} · live",
+            $"{DateTime.Now.ToString("yyyy년 M월 d일 HH:mm", Loc)} · 실시간");
         var heading = player.Length > 0 ? H(player) : title;
         sb.Append($"""
             <!doctype html><html lang="{L.Code}"><head><meta charset="utf-8">
@@ -291,21 +292,21 @@ public static class ReportWriter
 
         // Cifras clave: el total destaca; al lado, el resto.
         var initialNote = initialChests > 0
-            ? L.T($"Incluye {N(initialChests)} estimados de antes de usar la herramienta", $"Includes {N(initialChests)} estimated from before the tool")
-            : L.T("Cofres abiertos o destruidos por ti, según tus replays", "Chests you opened or destroyed, from your replays");
+            ? L.T($"Incluye {N(initialChests)} estimados de antes de usar la herramienta", $"Includes {N(initialChests)} estimated from before the tool", $"프로그램 사용 전 추정치 {N(initialChests)}개 포함")
+            : L.T("Cofres abiertos o destruidos por tu equipo, según tus replays", "Chests your team opened or destroyed, from your replays", "리플레이에서 확인한 팀 상자 개수");
         sb.Append($"""
             <div class="kpis">
               <div class="kpi hero">
-                <div><div class="l">{L.T("Cofres en total", "Total chests")}</div><div class="v">{N(totalChests)}</div><div class="s">{initialNote}</div></div>
+                <div><div class="l">{L.T("Cofres del equipo", "Team chests", "팀 상자 수")}</div><div class="v">{N(totalChests)}</div><div class="s">{initialNote}</div></div>
                 <div class="split">
-                  <div><b>{N(session)}</b><span>{L.T("en esta sesión", "this session")}{(sessionMatches.Count > 0 ? " · " + L.Count(sessionMatches.Count, "partida", "partidas", "match", "matches") : "")}</span></div>
-                  <div><b>{N(wins)}</b><span>{L.T(wins == 1 ? "victoria real" : "victorias reales", wins == 1 ? "Victory Royale" : "Victory Royales")}</span></div>
+                  <div><b>{N(session)}</b><span>{L.T("en esta sesión", "this session", "이번 세션")}{(sessionMatches.Count > 0 ? " · " + L.Count(sessionMatches.Count, "partida", "partidas", "match", "matches") : "")}</span></div>
+                  <div><b>{N(wins)}</b><span>{L.T(wins == 1 ? "victoria real" : "victorias reales", wins == 1 ? "Victory Royale" : "Victory Royales", "빅토리 로얄")}</span></div>
                 </div>
               </div>
-              <div class="kpi"><div class="l">{L.T("Partidas", "Matches")}</div><div class="v">{N(matches.Count)}</div><div class="s">{L.T("analizadas", "analyzed")}</div></div>
-              <div class="kpi"><div class="l">{L.T("Media", "Average")}</div><div class="v acc">{avg.ToString("0.0", Loc)}</div><div class="s">{L.T("cofres por partida", "chests per match")}</div></div>
-              <div class="kpi"><div class="l">{L.T("Récord", "Best match")}</div><div class="v">{N(best)}</div><div class="s">{L.T("cofres en una partida", "chests in one match")}</div></div>
-              <div class="kpi"><div class="l">{L.T("Tesoros", "Treasures")}</div><div class="v ros">{N(treasures)}</div><div class="s">{L.T("encontrados", "found")}</div></div>
+              <div class="kpi"><div class="l">{L.T("Partidas", "Matches", "경기")}</div><div class="v">{N(matches.Count)}</div><div class="s">{L.T("analizadas", "analyzed", "분석 완료")}</div></div>
+              <div class="kpi"><div class="l">{L.T("Media", "Average", "평균")}</div><div class="v acc">{avg.ToString("0.0", Loc)}</div><div class="s">{L.T("cofres por partida", "chests per match", "경기당 상자 수")}</div></div>
+              <div class="kpi"><div class="l">{L.T("Récord", "Best match", "최고 기록")}</div><div class="v">{N(best)}</div><div class="s">{L.T("cofres en una partida", "chests in one match", "한 경기 상자 수")}</div></div>
+              <div class="kpi"><div class="l">{L.T("Tesoros", "Treasures", "보물")}</div><div class="v ros">{N(treasures)}</div><div class="s">{L.T("encontrados", "found", "발견")}</div></div>
             </div>
             """);
 
@@ -318,8 +319,8 @@ public static class ReportWriter
         var activeDays = perDay.Count(v => v > 0);
         var dayAvg = activeDays > 0 ? (double)sum30 / activeDays : 0;
         sb.Append($"""
-            <section><div class="sh"><h2>{L.T("Cofres por día", "Chests per day")}</h2>
-            <span class="meta">{L.T("Últimos 30 días", "Last 30 days")} · {N(sum30)} {L.T("cofres", "chests")} · {L.Count(activeDays, "día jugado", "días jugados", "day played", "days played")}</span></div>
+            <section><div class="sh"><h2>{L.T("Cofres por día", "Chests per day", "일별 팀 상자 수")}</h2>
+            <span class="meta">{L.T("Últimos 30 días", "Last 30 days", "최근 30일")} · {N(sum30)} {L.T("cofres", "chests", "상자")} · {N(activeDays)} {L.T("días jugados", "days played", "활동일")}</span></div>
             <div class="card pad"><div class="chart">
             <div class="yaxis"><span>{N(top)}</span><span>{N(top / 2)}</span><span>0</span></div>
             <div class="plot">
@@ -327,13 +328,13 @@ public static class ReportWriter
         if (dayAvg > 0)
         {
             var avgPct = 100.0 * dayAvg / top;
-            sb.Append($"""<div class="avg" style="bottom:{avgPct.ToString("0.##", CultureInfo.InvariantCulture)}%"><span>{L.T("media", "avg")} {dayAvg.ToString("0", Loc)}</span></div>""");
+            sb.Append($"""<div class="avg" style="bottom:{avgPct.ToString("0.##", CultureInfo.InvariantCulture)}%"><span>{L.T("media", "avg", "평균")} {dayAvg.ToString("0", Loc)}</span></div>""");
         }
         for (var i = 0; i < days.Count; i++)
         {
             var v = perDay[i];
             var h = 100.0 * v / top;
-            var tip = $"{days[i].ToString(L.En ? "ddd MMM d" : "ddd dd/MM", Loc)} · {L.Count(v, "cofre", "cofres", "chest", "chests")}";
+            var tip = $"{days[i].ToString(L.En ? "ddd MMM d" : L.Ko ? "M/d(ddd)" : "ddd dd/MM", Loc)} · {L.Count(v, "cofre", "cofres", "chest", "chests")}";
             var hs = h.ToString("0.##", CultureInfo.InvariantCulture);
             var tipAt = Math.Max(h, 1.5).ToString("0.##", CultureInfo.InvariantCulture);
             sb.Append($"<div class=\"col{(i == days.Count - 1 ? " today" : "")}\" aria-label=\"{H(tip)}\"><span class=\"tip\" style=\"bottom:calc({tipAt}% + 6px)\">{H(tip)}</span><div class=\"bar{(v == 0 ? " zero" : "")}\" style=\"height:{hs}%\"></div></div>");
@@ -341,8 +342,8 @@ public static class ReportWriter
         sb.Append("</div><div class=\"xaxis\">");
         for (var i = 0; i < days.Count; i++)
         {
-            var label = i == days.Count - 1 ? $"<span class=\"t\">{L.T("hoy", "today")}</span>"
-                : (days.Count - 1 - i) % 7 == 0 ? $"<span>{days[i].ToString(L.En ? "MMM d" : "dd/MM", Loc)}</span>"
+            var label = i == days.Count - 1 ? $"<span class=\"t\">{L.T("hoy", "today", "오늘")}</span>"
+                : (days.Count - 1 - i) % 7 == 0 ? $"<span>{days[i].ToString(L.En ? "MMM d" : L.Ko ? "M/d" : "dd/MM", Loc)}</span>"
                 : "<span></span>";
             sb.Append(label);
         }
@@ -364,10 +365,10 @@ public static class ReportWriter
         var treasureRows = matches.SelectMany(m => m.TreasureFinds.Select(f => (m, f))).ToList();
 
         sb.Append("<div class=\"grid2\" style=\"margin-top:28px\">");
-        sb.Append($"<section><div class=\"sh\"><h2>{L.T("Por tipo de cofre", "By chest type")}</h2><span class=\"meta\">{L.T("abiertos", "opened")}</span></div><div class=\"card pad\"><div class=\"rows\">");
+        sb.Append($"<section><div class=\"sh\"><h2>{L.T("Por tipo de cofre", "By chest type", "상자 유형별")}</h2><span class=\"meta\">{L.T("abiertos", "opened", "개봉")}</span></div><div class=\"card pad\"><div class=\"rows\">");
         if (byKind.Count == 0)
         {
-            sb.Append($"<div class=\"empty\">{L.T("Aún no hay cofres registrados.", "No chests recorded yet.")}</div>");
+            sb.Append($"<div class=\"empty\">{L.T("Aún no hay cofres registrados.", "No chests recorded yet.", "기록된 상자가 없습니다.")}</div>");
         }
         foreach (var (kind, count) in byKind)
         {
@@ -377,11 +378,11 @@ public static class ReportWriter
         var destroyedTotal = matches.Sum(m => m.Chests.Count(c => c.Destroyed));
         if (destroyedTotal > 0)
         {
-            sb.Append($"<div class=\"row sub\"><span>↳ {L.T("de ellos, destruidos en vez de abiertos", "of which destroyed instead of opened")}</span><span class=\"n\">{N(destroyedTotal)}</span></div>");
+            sb.Append($"<div class=\"row sub\"><span>↳ {L.T("de ellos, destruidos en vez de abiertos", "of which destroyed instead of opened", "이 중 파괴한 상자")}</span><span class=\"n\">{N(destroyedTotal)}</span></div>");
         }
         foreach (var (kind, count) in otherKinds)
         {
-            sb.Append($"<div class=\"row sub\"><span>{H(L.Name(kind))} <span class=\"sm\">· {L.T("fuera del total", "not in the total")}</span></span><span class=\"n\">{N(count)}</span></div>");
+            sb.Append($"<div class=\"row sub\"><span>{H(L.Name(kind))} <span class=\"sm\">· {L.T("fuera del total", "not in the total", "상자 합계 제외")}</span></span><span class=\"n\">{N(count)}</span></div>");
         }
         sb.Append("</div></div></section>");
 
@@ -389,7 +390,7 @@ public static class ReportWriter
         {
             var bySource = treasureRows.GroupBy(r => r.f.SourceLabel).OrderByDescending(g => g.Count()).ToList();
             var srcMax = Math.Max(1, bySource.Max(g => g.Count()));
-            sb.Append($"<section><div class=\"sh\"><h2>{L.T("De dónde vienen los tesoros", "Where the treasures come from")}</h2><span class=\"meta\">{L.T("seguros / total", "certain / total")}</span></div><div class=\"card pad\"><div class=\"rows\">");
+            sb.Append($"<section><div class=\"sh\"><h2>{L.T("De dónde vienen los tesoros", "Where the treasures come from", "보물 획득 경로")}</h2><span class=\"meta\">{L.T("seguros / total", "certain / total", "확정 / 전체")}</span></div><div class=\"card pad\"><div class=\"rows\">");
             foreach (var g in bySource)
             {
                 var isChest = g.First().f.SourceIsChest;
@@ -399,7 +400,7 @@ public static class ReportWriter
         }
         else
         {
-            sb.Append($"<section><div class=\"sh\"><h2>{L.T("Tesoros", "Treasures")}</h2></div><div class=\"card\"><div class=\"empty\">{L.T("Todavía no has encontrado tesoros. Aparecerán aquí con el momento y el cofre de origen.", "No treasures yet. They will show up here with the time and the chest they came from.")}</div></div></section>");
+            sb.Append($"<section><div class=\"sh\"><h2>{L.T("Tesoros", "Treasures", "보물")}</h2></div><div class=\"card\"><div class=\"empty\">{L.T("Todavía no has encontrado tesoros. Aparecerán aquí con el momento y el cofre de origen.", "No treasures yet. They will show up here with the time and the chest they came from.", "아직 발견한 보물이 없습니다. 획득 시각과 상자 정보가 여기에 표시됩니다.")}</div></div></section>");
         }
         sb.Append("</div>");
 
@@ -412,21 +413,21 @@ public static class ReportWriter
                 var kinds = H(string.Join(", ", unusual.Select(r => L.Name(r.f.SourceKind)).Distinct()));
                 sb.Append(L.En
                     ? $"<div class=\"flag\"><span class=\"ic\">⚑</span><div><b>{L.Count(unusual.Count, "", "", "treasure", "treasures")} obtained other than from a chest</b>: {kinds}. Highlighted in the table below.</div></div>"
-                    : $"<div class=\"flag\"><span class=\"ic\">⚑</span><div><b>{L.Count(unusual.Count, "tesoro obtenido", "tesoros obtenidos", "", "")} de otra forma que con un cofre</b>: {kinds}. Resaltados en la tabla de abajo.</div></div>");
+                    : $"<div class=\"flag\"><span class=\"ic\">⚑</span><div><b>{L.N(unusual.Count)}개 보물</b>이(가) 상자 외의 경로로 획득됨: {kinds}. 아래 표에서 강조 표시됩니다.</div></div>");
             }
 
             sb.Append($"""
-                <section><div class="sh"><h2>{L.T("Tesoros obtenidos", "Treasures obtained")}</h2><span class="meta">{L.Count(treasureRows.Count, "tesoro", "tesoros", "treasure", "treasures")}</span></div>
-                <div class="card tw"><table><thead><tr><th>{L.T("Partida", "Match")}</th><th>{L.T("Tesoro", "Treasure")}</th><th>{L.T("Momento", "Time")}</th><th>{L.T("Origen", "Source")}</th></tr></thead><tbody>
+                <section><div class="sh"><h2>{L.T("Tesoros obtenidos", "Treasures obtained", "획득한 보물")}</h2><span class="meta">{L.Count(treasureRows.Count, "tesoro", "tesoros", "treasure", "treasures")}</span></div>
+                <div class="card tw"><table><thead><tr><th>{L.T("Partida", "Match", "경기")}</th><th>{L.T("Tesoro", "Treasure", "보물")}</th><th>{L.T("Momento", "Time", "시각")}</th><th>{L.T("Origen", "Source", "획득 경로")}</th></tr></thead><tbody>
                 """);
             foreach (var (m, f) in treasureRows)
             {
                 var id = f.PrizeId != null ? $"<div class=\"sm\">{H(f.PrizeId)}</div>" : (f.RawItem.StartsWith("WID_") ? $"<div class=\"sm\">{H(f.RawItem)}</div>" : "");
-                var when = f.ObtainedAtSeconds is float t ? (f.TimeExact ? Pretty.Clock(t) : $"<span class=\"sm\">{L.T("hacia", "around")}</span> {Pretty.Clock(t)}") : "<span class=\"muted\">—</span>";
+                var when = f.ObtainedAtSeconds is float t ? (f.TimeExact ? Pretty.Clock(t) : $"<span class=\"sm\">{L.T("hacia", "around", "약")}</span> {Pretty.Clock(t)}") : "<span class=\"muted\">—</span>";
                 var source = $"{(f.SourceIsChest ? "" : "⚑ ")}{H(f.SourceLabel)}"
                     + (f.SourceCertain ? "" : $" <span class=\"sm\">({Pretty.Likely})</span>")
                     + (!f.SourceIsChest && !string.IsNullOrEmpty(f.SourceBlueprint) ? $"<div class=\"sm\">{H(f.SourceBlueprint)}</div>" : "")
-                    + (f.AlsoPossible.Count > 0 ? $"<div class=\"sm\">{L.T("también posible: ", "also possible: ")}{H(string.Join(", ", f.AlsoPossible.Select(L.Name)))}</div>" : "");
+                    + (f.AlsoPossible.Count > 0 ? $"<div class=\"sm\">{L.T("también posible: ", "also possible: ", "함께 가능: ")}{H(string.Join(", ", f.AlsoPossible.Select(L.Name)))}</div>" : "");
                 sb.Append($"<tr{(f.SourceIsChest ? "" : " class=\"unusual\"")}><td class=\"nw\">{L.DateTimeShort(When(m))}</td><td><span class=\"star\">{(f.FromGoldenChest ? "★★" : "★")} {H(f.DisplayName)}</span>{id}</td><td class=\"nw num\">{when}</td><td>{source}</td></tr>");
             }
             sb.Append("</tbody></table></div></section>");
@@ -436,12 +437,12 @@ public static class ReportWriter
         var shown = matches.Take(100).ToList();
         var shownMax = Math.Max(1, shown.Select(m => m.ChestsOpened).DefaultIfEmpty(0).Max());
         sb.Append($"""
-            <section><div class="sh"><h2>{L.T("Últimas partidas", "Latest matches")}</h2><span class="meta">{(matches.Count > shown.Count ? L.T($"las {shown.Count} más recientes de {N(matches.Count)}", $"latest {shown.Count} of {N(matches.Count)}") : L.Count(matches.Count, "partida", "partidas", "match", "matches"))}</span></div>
-            <div class="card tw"><table><thead><tr><th>{L.T("Fecha", "Date")}</th><th>{L.T("Modo", "Mode")}</th><th>{L.T("Puesto", "Placement")}</th><th class="r">{L.T("Cofres", "Chests")}</th><th>{L.T("Tesoros", "Treasures")}</th></tr></thead><tbody>
+            <section><div class="sh"><h2>{L.T("Últimas partidas", "Latest matches", "최근 경기")}</h2><span class="meta">{(matches.Count > shown.Count ? L.T($"las {shown.Count} más recientes de {N(matches.Count)}", $"latest {shown.Count} of {N(matches.Count)}", $"최근 {shown.Count} / 전체 {N(matches.Count)}") : L.Count(matches.Count, "partida", "partidas", "match", "matches"))}</span></div>
+            <div class="card tw"><table><thead><tr><th>{L.T("Fecha", "Date", "날짜")}</th><th>{L.T("Modo", "Mode", "모드")}</th><th>{L.T("Puesto", "Placement", "순위")}</th><th class="r">{L.T("Cofres", "Chests", "팀 상자")}</th><th>{L.T("Tesoros", "Treasures", "보물")}</th></tr></thead><tbody>
             """);
         if (shown.Count == 0)
         {
-            sb.Append($"<tr><td colspan=\"5\" class=\"empty\">{L.T("Aún no hay partidas analizadas. Juega una y aparecerá aquí.", "No matches analyzed yet. Play one and it will show up here.")}</td></tr>");
+            sb.Append($"<tr><td colspan=\"5\" class=\"empty\">{L.T("Aún no hay partidas analizadas. Juega una y aparecerá aquí.", "No matches analyzed yet. Play one and it will show up here.", "아직 분석된 경기가 없습니다. 한 경기를 플레이하면 여기에 표시됩니다.")}</td></tr>");
         }
         foreach (var m in shown)
         {
@@ -457,16 +458,23 @@ public static class ReportWriter
         sb.Append(L.T(
             """
             <footer><h3>Cómo se cuenta</h3>
-            <p>Cuenta los cofres que abriste o destruiste tú mismo, según tus archivos de replay (analizados tras cada partida). Las cajas de munición y de comida no se cuentan.</p>
+            <p>Cuenta los cofres que abrió o destruyó tu equipo, según tus archivos de replay (analizados tras cada partida). Las cajas de munición y de comida no se cuentan.</p>
             <p><span class="star">★★</span> cofre dorado de la caza del tesoro (cosmético, acceso a la tienda…), detectado con seguridad. <span class="star">★</span> tesoro recibido gracias a uno de tus cofres (momento exacto), con nombre cuando el objeto se puede identificar.</p>
-            <p>Los nombres de los premios se pueden editar en <code>treasures.json</code>. Esta página se actualiza sola.</p></footer>
+            <p>Los nombres de los premios se pueden editar en <code>treasures.json</code>.</p></footer>
             </main></body></html>
             """,
             """
             <footer><h3>How it counts</h3>
-            <p>Counts the chests you opened or destroyed yourself, from your replay files (analyzed after each match). Ammo boxes and food boxes are not counted.</p>
+            <p>Counts the chests your team opened or destroyed, from your replay files (analyzed after each match). Ammo boxes and food boxes are not counted.</p>
             <p><span class="star">★★</span> golden treasure hunt chest (cosmetic, shop access…), detected for sure. <span class="star">★</span> treasure received from one of your own chests (exact moment), named when the item can be identified.</p>
-            <p>Prize names can be edited in <code>treasures.json</code>. This page refreshes by itself.</p></footer>
+            <p>Prize names can be edited in <code>treasures.json</code>.</p></footer>
+            </main></body></html>
+            """,
+            """
+            <footer><h3>집계 기준</h3>
+            <p>리플레이 파일을 분석해 팀이 열거나 파괴한 상자를 집계합니다. 탄약 상자와 식량 상자는 포함하지 않습니다.</p>
+            <p><span class="star">★★</span> 확실히 감지된 보물찾기 황금 상자 (장식 아이템, 상점 이용 등). <span class="star">★</span> 내가 획득한 보물 (정확한 시각). 식별 가능한 아이템은 이름을 표시합니다.</p>
+            <p>보상 이름은 <code>treasures.json</code>에서 편집할 수 있습니다.</p></footer>
             </main></body></html>
             """));
         return sb.ToString();
@@ -498,9 +506,10 @@ public static class ReportWriter
             return "";
         }
         var pct = p.Total > 0 ? (int)Math.Round(100.0 * p.Done / p.Total) : 0;
-        var head = L.T($"Analizando tus replays… {p.Done} / {p.Total}", $"Analyzing your replays… {p.Done} / {p.Total}");
+        var head = L.T($"Analizando tus replays… {p.Done} / {p.Total}", $"Analyzing your replays… {p.Done} / {p.Total}", $"리플레이 분석 중… {p.Done} / {p.Total}");
         var note = L.T("Esta página se actualiza sola: las cifras de abajo aumentan a medida que se leen los replays.",
-            "This page updates by itself: the numbers below grow as the replays are read.");
+            "This page updates by itself: the numbers below grow as the replays are read.",
+            "리플레이를 읽는 동안 아래 통계가 자동으로 갱신됩니다.");
         return $"""<div class="loading"><div class="spin"></div><div class="grow"><b>{head}</b><div class="pbar"><i style="width:{pct}%"></i></div><span class="muted">{note}</span></div></div>""";
     }
 
@@ -511,7 +520,7 @@ public static class ReportWriter
         {
             return "";
         }
-        return $"""<div class="profiles">{L.T("Otros perfiles en este PC: ", "Other profiles on this PC: ")}{string.Join(", ", others)} · {L.T("cambia de perfil desde los ajustes de la herramienta", "switch profile from the tool's settings")}</div>""";
+        return $"""<div class="profiles">{L.T("Otros perfiles en este PC: ", "Other profiles on this PC: ", "이 PC의 다른 프로필: ")}{string.Join(", ", others)} · {L.T("cambia de perfil desde los ajustes de la herramienta", "switch profile from the tool's settings", "프로그램 설정에서 프로필을 변경하세요")}</div>""";
     }
 
     /// <summary>Rewrites only the OBS overlay page (called on every live update).</summary>
@@ -560,7 +569,7 @@ public static class ReportWriter
         var chip = v.Current == null ? "none" : v.CurrentLive ? "live" : "";
         return $"""
             <div class="box{(v.CurrentLive ? " live" : "")}">
-            <div class="head"><span>{L.T("COFRES", "CHESTS")}</span>{badge}</div>
+            <div class="head"><span>{L.T("COFRES", "CHESTS", "상자")}</span>{badge}</div>
             <div class="main">
               <div class="total"><span class="big">{H(v.Total)}</span><span class="cap">total</span></div>
               <div class="chip {chip}"><span class="big">{H(v.Current ?? "—")}</span><span class="cap">{H(v.CurrentCaption)}</span></div>

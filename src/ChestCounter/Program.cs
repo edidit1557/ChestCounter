@@ -60,7 +60,6 @@ internal static class Program
         var once = false;
         var reset = false;
         var auto = false;          // abierto por el proceso en espera cuando Fortnite arranca: se cierra solo al cerrar Fortnite
-        var afterUpdate = false;   // reiniciado por el actualizador: espera a que la instancia anterior termine
         string? previewPath = null;
         for (var i = 0; i < args.Length; i++)
         {
@@ -73,7 +72,6 @@ internal static class Program
                 case "--reset-config": reset = true; break;
                 case "--overlay-preview": previewPath = args[++i]; break;
                 case "--auto": auto = true; break;
-                case "--after-update": afterUpdate = true; break;
                 case "-h":
                 case "--help":
                     Console.WriteLine(L.T("""
@@ -94,6 +92,15 @@ internal static class Program
                           --once              analyze the finished replays, show the summary and quit (no window)
                           --reset-config      show the first-run questions again
                           --overlay-preview <file.png>   save previews of the overlay and quit
+                        """, """
+                        Fortnite 상자 카운터
+
+                        옵션:
+                          --demos <폴더>       리플레이 폴더 (기본값: %LOCALAPPDATA%\\FortniteGame\\Saved\\Demos)
+                          --data <폴더>        데이터 폴더 (기본값: %APPDATA%\\ChestCounter)
+                          --once              완료된 리플레이를 분석하고 요약을 표시한 뒤 종료 (창 없음)
+                          --reset-config      첫 실행 질문을 다시 표시
+                          --overlay-preview <파일.png>   오버레이 미리 보기를 저장하고 종료
                         """));
                     return 0;
             }
@@ -105,7 +112,7 @@ internal static class Program
 
         // Una sola instancia por carpeta de datos: dos contarían las mismas partidas.
         using var instance = new Mutex(false, AppInfo.InstanceMutexFor(dataDir));
-        if (previewPath == null && !AcquireInstance(instance, afterUpdate ? TimeSpan.FromSeconds(20) : TimeSpan.Zero))
+        if (previewPath == null && !AcquireInstance(instance))
         {
             if (auto)
             {
@@ -128,7 +135,7 @@ internal static class Program
         var config = reset ? null : store.LoadConfig();
         var firstRun = config == null;
         config ??= new Config();
-        config.Language = L.En ? "en" : "es";
+        config.Language = L.En ? "en" : "ko";
 
         if (demosArg != null) config.DemosFolder = demosArg;
         var defaultDemos = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FortniteGame", "Saved", "Demos");
@@ -223,10 +230,9 @@ internal static class Program
 
         if (OperatingSystem.IsWindows())
         {
-            Updater.CleanupOld();
             if (config.StartWithFortnite)
             {
-                FortniteWatch.Apply(true, dataDir); // sigue la ruta del exe si se movió o se actualizó
+                FortniteWatch.Apply(true, dataDir); // keeps the startup entry pointed at the current exe path
             }
             if (Process.GetProcessesByName("ChestTracker") is { Length: > 0 } oldTool)
             {
@@ -257,22 +263,15 @@ internal static class Program
         Application.Run(form);
         monitor.Stop();
 
-        // Nueva versión instalada: arranca el exe nuevo.
-        if (monitor.RestartAfterUpdate && AppInfo.ExePath is { } newExe)
-        {
-            try { instance.ReleaseMutex(); } catch { }
-            var restartArgs = string.Join(" ", args.Where(a => a != "--after-update").Select(a => a.Contains(' ') ? $"\"{a}\"" : a).Append("--after-update"));
-            Process.Start(new ProcessStartInfo(newExe, restartArgs) { UseShellExecute = true })?.Dispose();
-        }
         return 0;
 
         // ---- Ayudantes -----------------------------------------------------------------------------------
 
-        static bool AcquireInstance(Mutex m, TimeSpan wait)
+        static bool AcquireInstance(Mutex m)
         {
             try
             {
-                return m.WaitOne(wait);
+                return m.WaitOne(TimeSpan.Zero);
             }
             catch (AbandonedMutexException)
             {

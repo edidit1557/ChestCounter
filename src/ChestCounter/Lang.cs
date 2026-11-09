@@ -3,75 +3,85 @@ using System.Globalization;
 namespace ChestCounter;
 
 /// <summary>
-/// Idioma de la aplicación: español si Windows está en español, inglés en cualquier otro caso.
-/// Los textos se escriben en línea: <c>L.T("español", "English")</c>. Los nombres guardados en data.json (tipos de
-/// cofre, objetos del tesoro) siguen en francés por compatibilidad y se traducen al mostrarlos (<see cref="Name"/>).
+/// Windows 설정에 따라 한국어 또는 영어로 표시합니다.
+/// data.json에 저장된 상자와 보물 이름은 호환성을 위해 유지하고 표시할 때 번역합니다 (<see cref="Name"/>).
 /// </summary>
 public static class L
 {
-    /// <summary>True cuando la interfaz va en inglés (Windows no está en español).</summary>
+    /// <summary>인터페이스가 영어이면 true입니다.</summary>
     /// <remarks>
-    /// Para probar: la variable CHESTCOUNTER_LANG (en o es) fuerza el idioma. Sin ella, manda Windows.
+    /// Windows 언어 대신 영어 또는 한국어를 사용하려면 CHESTCOUNTER_LANG을 "en" 또는 "ko"로 설정합니다.
     /// </remarks>
-    public static bool En { get; } = Environment.GetEnvironmentVariable("CHESTCOUNTER_LANG") is { Length: > 0 } forced
-        ? !forced.StartsWith("es", StringComparison.OrdinalIgnoreCase)
-        : CultureInfo.CurrentUICulture.TwoLetterISOLanguageName != "es";
+    private static string Language { get; } = Environment.GetEnvironmentVariable("CHESTCOUNTER_LANG") is { Length: > 0 } forced
+        ? (forced[..Math.Min(2, forced.Length)].ToLowerInvariant() == "en" ? "en" : "ko")
+        : (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en" ? "en" : "ko");
+    public static bool En => Language == "en";
+    public static bool Ko => Language == "ko";
 
-    public static CultureInfo Culture { get; } = CultureInfo.GetCultureInfo(En ? "en-US" : "es-ES");
+    public static CultureInfo Culture { get; } = CultureInfo.GetCultureInfo(Ko ? "ko-KR" : "en-US");
 
-    /// <summary>Código del idioma para los atributos lang de las páginas HTML.</summary>
-    public static string Code => En ? "en" : "es";
+    /// <summary>HTML 페이지의 lang 속성에 사용할 언어 코드입니다.</summary>
+    public static string Code => Ko ? "ko" : "en";
 
-    public static string T(string es, string en) => En ? en : es;
+    public static string T(string fallback, string en, string? ko = null) => En ? en : ko ?? en;
 
     /// <summary>Entero sin separador de miles ("1409"): las cifras son cantidades, no importes.</summary>
     public static string N(int n) => n.ToString("0", Culture);
 
     /// <summary>"3 cofres" / "1 chest" (plural según la cifra, en el idioma actual).</summary>
-    public static string Count(int n, string esOne, string esMany, string enOne, string enMany) =>
-        $"{N(n)} {(n == 1 ? T(esOne, enOne) : T(esMany, enMany))}";
+    public static string Count(int n, string esOne, string esMany, string enOne, string enMany)
+    {
+        if (Ko)
+        {
+            var noun = esOne switch
+            {
+                "cofre" => "개 상자", "partida" => "경기", "replay" => "개 리플레이", "tesoro" => "개 보물",
+                "cofre abierto" => "개 상자 개봉", "cofre del equipo" => "개 팀 상자",
+                "replay analizado" => "개 리플레이 분석", _ => $"개 {esOne}"
+            };
+            return $"{N(n)}{noun}";
+        }
+        return $"{N(n)} {(n == 1 ? enOne : enMany)}";
+    }
 
     /// <summary>"12.º" / "12th".</summary>
     public static string Ordinal(int n)
     {
-        if (!En)
-        {
-            return $"{n}.º";
-        }
+        if (Ko) return $"{n}위";
         var suffix = (n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" };
         return $"{n}{suffix}";
     }
 
-    /// <summary>Fecha corta + hora de una partida ("05/11 22:54" / "Nov 5 22:54").</summary>
-    public static string DateTimeShort(DateTime d) => d.ToString(En ? "MMM d HH:mm" : "dd/MM HH:mm", Culture);
+    /// <summary>Short date and time for a match.</summary>
+    public static string DateTimeShort(DateTime d) => d.ToString(Ko ? "M월 d일 HH:mm" : "MMM d HH:mm", Culture);
 
-    // Nombres internos guardados en data.json (en inglés) -> nombre mostrado.
-    private static readonly Dictionary<string, (string Es, string En)> Names = new(StringComparer.OrdinalIgnoreCase)
+    // data.json에 저장된 내부 이름(영어)을 화면 표시 이름으로 변환합니다.
+    private static readonly Dictionary<string, (string Es, string En, string Ko)> Names = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Chest"] = ("Cofre", "Chest"),
-        ["Rare chest"] = ("Cofre raro", "Rare chest"),
-        ["Buried chest"] = ("Cofre enterrado", "Buried chest"),
-        ["Extraction / relic chest"] = ("Cofre de extracción / reliquias", "Extraction / relic chest"),
-        ["Spirit poster chest"] = ("Cofre de los carteles de espíritu", "Spirit poster chest"),
-        ["Other chest"] = ("Otro cofre", "Other chest"),
-        ["Loot cannon"] = ("Cañón de botín", "Loot cannon"),
-        ["Ammo box"] = ("Caja de munición", "Ammo box"),
-        ["Food box"] = ("Caja de comida", "Food box"),
-        ["Other container"] = ("Otro contenedor", "Other container"),
-        ["Treasure"] = ("Tesoro", "Treasure"),
-        ["Treasure (unknown type)"] = ("Tesoro (tipo desconocido)", "Treasure (unknown type)"),
-        ["Treasure gizmo"] = ("Artilugio de tesoro", "Treasure gizmo"),
-        ["Golden firework"] = ("Fuego artificial dorado", "Golden firework"),
-        ["Portable extractor"] = ("Extractor portátil", "Portable extractor"),
-        ["Spirit locator"] = ("Localizador de espíritu", "Spirit locator"),
-        ["Lucky locator"] = ("Localizador afortunado", "Lucky locator"),
-        ["Extraction accelerator"] = ("Acelerador de extracción", "Extraction accelerator"),
-        ["unknown"] = ("desconocido", "unknown"),
+        ["Chest"] = ("Cofre", "Chest", "상자"),
+        ["Rare chest"] = ("Cofre raro", "Rare chest", "희귀 상자"),
+        ["Buried chest"] = ("Cofre enterrado", "Buried chest", "매장된 상자"),
+        ["Extraction / relic chest"] = ("Cofre de extracción / reliquias", "Extraction / relic chest", "추출 / 유물 상자"),
+        ["Spirit poster chest"] = ("Cofre de los carteles de espíritu", "Spirit poster chest", "영혼 포스터 상자"),
+        ["Other chest"] = ("Otro cofre", "Other chest", "기타 상자"),
+        ["Loot cannon"] = ("Cañón de botín", "Loot cannon", "전리품 대포"),
+        ["Ammo box"] = ("Caja de munición", "Ammo box", "탄약 상자"),
+        ["Food box"] = ("Caja de comida", "Food box", "식량 상자"),
+        ["Other container"] = ("Otro contenedor", "Other container", "기타 보관함"),
+        ["Treasure"] = ("Tesoro", "Treasure", "보물"),
+        ["Treasure (unknown type)"] = ("Tesoro (tipo desconocido)", "Treasure (unknown type)", "보물 (알 수 없는 유형)"),
+        ["Treasure gizmo"] = ("Artilugio de tesoro", "Treasure gizmo", "보물 장치"),
+        ["Golden firework"] = ("Fuego artificial dorado", "Golden firework", "황금 불꽃놀이"),
+        ["Portable extractor"] = ("Extractor portátil", "Portable extractor", "휴대용 추출기"),
+        ["Spirit locator"] = ("Localizador de espíritu", "Spirit locator", "영혼 탐지기"),
+        ["Lucky locator"] = ("Localizador afortunado", "Lucky locator", "행운 탐지기"),
+        ["Extraction accelerator"] = ("Acelerador de extracción", "Extraction accelerator", "추출 가속기"),
+        ["unknown"] = ("desconocido", "unknown", "알 수 없음"),
     };
 
     /// <summary>
-    /// Nombres internos de versiones anteriores a la 2.0.9 (estaban en francés) -> nombre interno actual.
-    /// Solo se usa para convertir el historial antiguo al abrirlo.
+    /// 2.0.9 이전 버전의 내부 이름(프랑스어)을 현재 내부 이름으로 변환합니다.
+    /// 이전 기록을 불러올 때만 사용합니다.
     /// </summary>
     private static readonly Dictionary<string, string> Legacy = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -96,16 +106,16 @@ public static class L
         ["inconnu"] = "unknown",
     };
 
-    /// <summary>Nombre interno actual de un nombre guardado por una versión anterior (o el mismo si no cambió).</summary>
+    /// <summary>이전 버전에서 저장한 이름을 현재 내부 이름으로 변환합니다.</summary>
     public static string Upgrade(string stored) => Legacy.TryGetValue(stored, out var current) ? current : stored;
 
-    /// <summary>Nombre mostrado de un tipo de cofre u objeto guardado en data.json.</summary>
+    /// <summary>data.json에 저장된 상자 또는 아이템의 화면 표시 이름입니다.</summary>
     public static string Name(string? stored)
     {
         if (string.IsNullOrEmpty(stored))
         {
             return stored ?? "";
         }
-        return Names.TryGetValue(Upgrade(stored), out var pair) ? (En ? pair.En : pair.Es) : stored;
+        return Names.TryGetValue(Upgrade(stored), out var pair) ? (Ko ? pair.Ko : En ? pair.En : pair.Es) : stored;
     }
 }

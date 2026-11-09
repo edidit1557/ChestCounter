@@ -4,7 +4,7 @@ namespace ChestCounter;
 public static class OverlayModel
 {
     /// <summary>Texto del contador derecho entre dos partidas (también sirve para mantener el ancho del overlay).</summary>
-    public static string LastMatchCaption => L.T("anterior", "previous");
+    public static string LastMatchCaption => L.T("anterior", "previous", "최근 경기");
 
     /// <summary>Icono del contador de tesoros (una gema).</summary>
     public const string TreasureIcon = "💎";
@@ -32,29 +32,29 @@ public static class OverlayModel
             sessionDetail = $"{L.Count(session.Count, "partida", "partidas", "match", "matches")} · {L.T("media", "avg.")} {avgText}";
         }
         // Solo números en las columnas: la etiqueta ya dice qué son, y un número largo no choca con la columna de al lado.
-        rows.Add(new OverlayRow(L.T("Sesión", "Session"), L.N(session.Sum(m => m.ChestsOpened) + liveChests), Detail: sessionDetail));
-        rows.Add(new OverlayRow(L.T("Media", "Avg."), avgText));
+        rows.Add(new OverlayRow(L.T("Sesión", "Session", "이번 세션"), L.N(session.Sum(m => m.ChestsOpened) + liveChests), Detail: sessionDetail));
+        rows.Add(new OverlayRow(L.T("Media", "Avg.", "평균"), avgText));
 
         var last = d.Matches.OrderByDescending(m => m.MatchStartUtc ?? m.AnalyzedAtUtc).FirstOrDefault();
         // Entre partidas el contador derecho ya muestra la última partida: la fila solo aparece durante una partida.
         if (last != null && (live != null || inProgress))
         {
-            rows.Add(new OverlayRow(L.T("Anterior", "Previous"), L.N(last.ChestsOpened)));
+            rows.Add(new OverlayRow(L.T("Anterior", "Previous", "이전 경기"), L.N(last.ChestsOpened)));
         }
 
         var treasures = d.Matches.Sum(m => m.TreasureFinds.Count) + liveTreasures;
-        rows.Add(new OverlayRow(L.T("Tesoros", "Treasures"), $"{TreasureIcon} {L.N(treasures)}", Treasure: true));
+        rows.Add(new OverlayRow(L.T("Tesoros", "Treasures", "보물"), $"{TreasureIcon} {L.N(treasures)}", Treasure: true));
 
         // Contador derecho: la partida en curso si se puede leer, "…" mientras no se pueda, si no la última partida.
         if (live != null)
         {
-            return new OverlayView(L.N(total), L.N(live.ChestsOpened), L.T("actual", "current"), true,
-                L.T("● EN DIRECTO", "● LIVE"), rows);
+            return new OverlayView(L.N(total), L.N(live.ChestsOpened), L.T("actual", "current", "현재 경기"), true,
+                L.T("● EN DIRECTO", "● LIVE", "● 실시간"), rows);
         }
         if (inProgress)
         {
-            return new OverlayView(L.N(total), "…", L.T("en curso", "in progress"), true,
-                L.T("● EN PARTIDA", "● MATCH IN PROGRESS"), rows);
+            return new OverlayView(L.N(total), "…", L.T("en curso", "in progress", "진행 중"), true,
+                L.T("● EN PARTIDA", "● MATCH IN PROGRESS", "● 경기 진행 중"), rows);
         }
         return new OverlayView(L.N(total), last != null ? L.N(last.ChestsOpened) : null, LastMatchCaption, false, null, rows);
     }
