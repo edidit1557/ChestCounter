@@ -8,7 +8,7 @@ namespace ChestCounter;
 /// <summary>
 /// Ventana principal, horizontal 16:9 (592×332): total y partida actual, última partida, gráfico de 7 días,
 /// estadísticas en tarjetas y los botones de acción.
-/// Todo lo demás (escaneo, overlay, actualizaciones) lo hace <see cref="Monitor"/> en segundo plano.
+/// Todo lo demás (escaneo y overlay) lo hace <see cref="Monitor"/> en segundo plano.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class MainForm : Form
@@ -28,7 +28,6 @@ public sealed class MainForm : Form
     private readonly Label _statTodayCap, _statBestDayCap, _statAverageCap, _statBestMatchCap, _statMatchesCap, _statTreasuresCap;
     private readonly Card _noticeCard;
     private readonly Label _notice;
-    private readonly PillButton _update;
     private readonly PillButton _overlayButton, _reportButton, _settingsButton;
     private readonly DailyChart _daily;
     private readonly Label _lastValue, _lastDetail;
@@ -45,7 +44,7 @@ public sealed class MainForm : Form
         _monitor = monitor;
         _store = store;
 
-        Text = L.T("Contador de cofres", "Chest Counter") + " v" + AppInfo.VersionText;
+        Text = L.T("Contador de cofres", "Chest Counter", "상자 카운터") + " v" + AppInfo.VersionText;
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96, 96);
         Font = Theme.Text();
@@ -58,7 +57,7 @@ public sealed class MainForm : Form
         Icon = AppIcon.Load();
 
         // Cabecera: título, perfil y distintivo.
-        Lbl(this, L.T("CONTADOR DE COFRES", "CHEST COUNTER"), 8.5f, FontStyle.Bold, Theme.Cyan, new Point(LeftX, 14), new Size(202, 18));
+        Lbl(this, L.T("CONTADOR DE COFRES", "CHEST COUNTER", "상자 카운터"), 8.5f, FontStyle.Bold, Theme.Cyan, new Point(LeftX, 14), new Size(202, 18));
         _badgeCard = new Card { Location = new Point(484, 9), Size = new Size(96, 22), Radius = 11, BackColor = Theme.Panel, Visible = false };
         _badge = Lbl(_badgeCard, "", 8.0f, FontStyle.Bold, Theme.Mint, new Point(0, 0), new Size(96, 22), ContentAlignment.MiddleCenter);
         Controls.Add(_badgeCard);
@@ -88,51 +87,47 @@ public sealed class MainForm : Form
         var hero = new Card { Location = new Point(LeftX, 40), Size = new Size(LeftW, 100), Radius = 16 };
         Controls.Add(hero);
         _total = Lbl(hero, "0", 28f, FontStyle.Bold, Theme.Cyan, new Point(15, 6), new Size(120, 50));
-        _totalCap = Lbl(hero, L.T("cofres en total", "chests in total"), 8.0f, FontStyle.Regular, Theme.Muted, new Point(16, 59), new Size(120, 16));
+        _totalCap = Lbl(hero, L.T("cofres del equipo", "team chests", "팀 상자"), 8.0f, FontStyle.Regular, Theme.Muted, new Point(16, 59), new Size(120, 16));
         hero.Controls.Add(new Panel { BackColor = Theme.CardEdge, Location = new Point(138, 15), Size = new Size(1, 70) });
         _current = Lbl(hero, "—", 28f, FontStyle.Bold, Theme.Amber, new Point(151, 6), new Size(110, 50));
-        _currentCap = Lbl(hero, L.T("última partida", "last match"), 8.0f, FontStyle.Regular, Theme.Muted, new Point(153, 59), new Size(110, 16));
+        _currentCap = Lbl(hero, L.T("última partida", "last match", "최근 경기"), 8.0f, FontStyle.Regular, Theme.Muted, new Point(153, 59), new Size(110, 16));
         _session = Lbl(hero, "", 8.0f, FontStyle.Regular, Theme.Ink, new Point(15, 77), new Size(243, 16));
 
         // Última partida: cofres abiertos, con los detalles (rotos, tesoros, puesto, eliminaciones).
         var last = new Card { Location = new Point(LeftX, 149), Size = new Size(LeftW, 50), Radius = 12 };
-        Lbl(last, L.T("Última partida", "Last match"), 7.5f, FontStyle.Regular, Theme.Muted, new Point(13, 6), new Size(101, 13));
+        Lbl(last, L.T("Última partida", "Last match", "최근 경기"), 7.5f, FontStyle.Regular, Theme.Muted, new Point(13, 6), new Size(101, 13));
         _lastDetail = Lbl(last, "", 7.5f, FontStyle.Regular, Theme.Muted, new Point(101, 5), new Size(153, 15), ContentAlignment.MiddleRight);
         _lastValue = Lbl(last, "—", 11.5f, FontStyle.Bold, Theme.Amber, new Point(13, 22), new Size(243, 22));
         Controls.Add(last);
 
         // Gráfico de los últimos 7 días.
         var daily = new Card { Location = new Point(LeftX, 206), Size = new Size(LeftW, 120), Radius = 14 };
-        Lbl(daily, L.T("Últimos 7 días", "Last 7 days"), 8.0f, FontStyle.Regular, Theme.Muted, new Point(13, 7), new Size(184, 13));
+        Lbl(daily, L.T("Últimos 7 días", "Last 7 days", "최근 7일"), 8.0f, FontStyle.Regular, Theme.Muted, new Point(13, 7), new Size(184, 13));
         _daily = new DailyChart { Location = new Point(9, 24), Size = new Size(246, 90), BackColor = Theme.Card };
         daily.Controls.Add(_daily);
         Controls.Add(daily);
 
         // Rejilla de estadísticas: dos columnas, tres filas (columna derecha).
-        _statToday = Stat(L.T("Hoy", "Today"), RightX, 40, Theme.Cyan, out _statTodayCap);
-        _statBestDay = Stat(L.T("Mejor día", "Best day"), RightX + 142, 40, Theme.Amber, out _statBestDayCap);
-        _statAverage = Stat(L.T("Media por partida", "Average per match"), RightX, 117, Theme.Ink, out _statAverageCap);
-        _statBestMatch = Stat(L.T("Mejor partida", "Best match"), RightX + 142, 117, Theme.Ink, out _statBestMatchCap);
-        _statMatches = Stat(L.T("Histórico", "History"), RightX, 196, Theme.Ink, out _statMatchesCap);
-        _statTreasures = Stat(L.T("Tesoros", "Treasures"), RightX + 142, 196, Theme.Ink, out _statTreasuresCap);
+        _statToday = Stat(L.T("Hoy", "Today", "오늘"), RightX, 40, Theme.Cyan, out _statTodayCap);
+        _statBestDay = Stat(L.T("Mejor día", "Best day", "최고 기록일"), RightX + 142, 40, Theme.Amber, out _statBestDayCap);
+        _statAverage = Stat(L.T("Media por partida", "Average per match", "경기당 평균"), RightX, 117, Theme.Ink, out _statAverageCap);
+        _statBestMatch = Stat(L.T("Mejor partida", "Best match", "최고 기록 경기"), RightX + 142, 117, Theme.Ink, out _statBestMatchCap);
+        _statMatches = Stat(L.T("Histórico", "History", "전체 경기"), RightX, 196, Theme.Ink, out _statMatchesCap);
+        _statTreasures = Stat(L.T("Tesoros", "Treasures", "보물"), RightX + 142, 196, Theme.Ink, out _statTreasuresCap);
 
-        // Aviso (versión nueva, cierre con Fortnite) o botón de actualizar: ocupa el sitio de los botones.
+        // Aviso de cierre automático: ocupa el sitio de los botones mientras está visible.
         _noticeCard = new Card { Location = new Point(RightX, 277), Size = new Size(RightW, 40), Radius = 12, BackColor = Theme.Card, Visible = false };
         _notice = Lbl(_noticeCard, "", 8.5f, FontStyle.Regular, Theme.AccentSoft, new Point(13, 0), new Size(RightW - 26, 40), ContentAlignment.MiddleLeft);
         _noticeCard.Click += (_, _) => { if (_autoCloseOffer) _monitor.KeepOpen(); };
         _notice.Click += (_, _) => { if (_autoCloseOffer) _monitor.KeepOpen(); };
         Controls.Add(_noticeCard);
 
-        _update = new PillButton { Location = new Point(RightX, 277), Size = new Size(RightW, 40), Radius = 12, Visible = false, BackColor = Theme.Accent, HoverColor = Theme.AccentHover, ForeColor = Theme.AccentInk };
-        _update.Click += (_, _) => _monitor.InstallUpdate();
-        Controls.Add(_update);
-
         // Botones de acción.
-        _overlayButton = Action(L.T("Overlay", "Overlay"), RightX);
+        _overlayButton = Action(L.T("Overlay", "Overlay", "오버레이"), RightX);
         _overlayButton.Click += (_, _) => _monitor.ToggleOverlay();
-        _reportButton = Action(L.T("Informe", "Report"), RightX + 95);
+        _reportButton = Action(L.T("Informe", "Report", "리포트"), RightX + 95);
         _reportButton.Click += (_, _) => Open(_store.ReportPath);
-        _settingsButton = Action(L.T("Ajustes", "Settings"), RightX + 190);
+        _settingsButton = Action(L.T("Ajustes", "Settings", "설정"), RightX + 190);
         _settingsButton.Click += (_, _) =>
         {
             using var dialog = new SettingsForm(_monitor, _store);
@@ -261,8 +256,8 @@ public sealed class MainForm : Form
         _current.Text = v.Current ?? "—";
         _current.ForeColor = v.CurrentLive ? Theme.Mint : v.Current == null ? Theme.Muted : Theme.Amber;
         // El overlay usa textos cortos ("anterior" / "actual"); aquí hay sitio para los largos.
-        _currentCap.Text = v.CurrentCaption == OverlayModel.LastMatchCaption ? L.T("última partida", "last match")
-            : v.CurrentLive && v.Current != "…" ? L.T("partida actual", "current match")
+        _currentCap.Text = v.CurrentCaption == OverlayModel.LastMatchCaption ? L.T("última partida", "last match", "최근 경기")
+            : v.CurrentLive && v.Current != "…" ? L.T("partida actual", "current match", "현재 경기")
             : v.CurrentCaption;
         _badge.Text = v.Badge ?? "";
         _badgeCard.Visible = !string.IsNullOrEmpty(v.Badge);
@@ -272,28 +267,28 @@ public sealed class MainForm : Form
         var sessionChests = session != null && int.TryParse(session.Value, System.Globalization.NumberStyles.None, L.Culture, out var n)
             ? L.Count(n, "cofre", "cofres", "chest", "chests")
             : session?.Value;
-        _session.Text = session == null ? "" : $"{L.T("Sesión", "Session")}: {sessionChests}" + (session.Detail != null ? $"  ·  {session.Detail}" : "");
+        _session.Text = session == null ? "" : $"{L.T("Sesión", "Session", "이번 세션")}: {sessionChests}" + (session.Detail != null ? $"  ·  {session.Detail}" : "");
 
         var st = s.Stats;
         _statToday.Text = L.N(st.Today);
         // La fecha va en la línea de arriba: "1.409 · 06/11" a 15 pt no cabe en la tarjeta y se cortaba.
         _statBestDay.Text = st.BestDay is { } bestDay ? L.N(st.BestDayChests) : "—";
         _statBestDayCap.Text = st.BestDay is { } bd
-            ? $"{L.T("Mejor día", "Best day")} · {bd:dd/MM}"
-            : L.T("Mejor día", "Best day");
+            ? $"{L.T("Mejor día", "Best day", "최고 기록일")} · {bd.ToString(L.Ko ? "MM/dd" : "dd/MM", L.Culture)}"
+            : L.T("Mejor día", "Best day", "최고 기록일");
         _statAverage.Text = st.Matches > 0 ? st.Average.ToString("0.0", L.Culture) : "—";
         _statBestMatch.Text = st.Matches > 0 ? L.N(st.BestMatch) : "—";
         _statMatches.Text = L.Count(st.HistoryMatches, "partida", "partidas", "match", "matches");
         _statMatchesCap.Text = st.HistorySince is { } since
-            ? L.T($"Desde {since:dd/MM/yy}", $"Since {since:dd/MM/yy}")
-            : L.T("Histórico", "History");
+            ? L.T($"Desde {since:dd/MM/yy}", $"Since {since:dd/MM/yy}", $"{since:yyyy년 M월}부터")
+            : L.T("Histórico", "History", "전체 기록");
         _statTreasures.Text = $"{OverlayModel.TreasureIcon} {L.N(st.Treasures)}";
         _overlayButton.Enabled = _monitor.OverlayEnabled;
         _overlayButton.Indicator = _monitor.OverlayVisible ? Theme.Green : Theme.Red;
 
         if (st.LastMatch is { } lm)
         {
-            _lastValue.Text = L.Count(lm.Chests, "cofre abierto", "cofres abiertos", "chest opened", "chests opened");
+            _lastValue.Text = L.Count(lm.Chests, "cofre del equipo", "cofres del equipo", "team chest", "team chests");
             var parts = new List<string>();
             if (lm.Destroyed > 0) parts.Add(L.T($"{lm.Destroyed} roto(s)", $"{lm.Destroyed} destroyed"));
             if (lm.Treasures > 0) parts.Add(L.Count(lm.Treasures, "tesoro", "tesoros", "treasure", "treasures"));
@@ -338,20 +333,14 @@ public sealed class MainForm : Form
         }
         _ignoreProfileChange = false;
 
-        // Aviso o actualización: uno u otro, en el mismo sitio.
+        // Aviso de cierre automático.
         _autoCloseOffer = s.AutoCloseOffer;
-        _update.Visible = s.Update != null;
-        if (s.Update != null)
-        {
-            _update.Text = L.T($"Instalar la versión {s.Update.Version.ToString(3)} (tienes la {AppInfo.VersionText})",
-                $"Install version {s.Update.Version.ToString(3)} (you have {AppInfo.VersionText})");
-        }
         _notice.Text = s.Notice ?? "";
         _notice.Cursor = s.AutoCloseOffer ? Cursors.Hand : Cursors.Default;
-        _noticeCard.Visible = s.Update == null && !string.IsNullOrEmpty(s.Notice);
+        _noticeCard.Visible = !string.IsNullOrEmpty(s.Notice);
 
-        // Los botones ocupan el mismo sitio que el aviso o la actualización: cuando hay aviso, se ocultan.
-        var notice = _update.Visible || _noticeCard.Visible;
+        // Los botones ocupan el sitio del aviso de cierre automático cuando aparece.
+        var notice = _noticeCard.Visible;
         _overlayButton.Visible = _reportButton.Visible = _settingsButton.Visible = !notice;
     }
 

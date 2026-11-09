@@ -7,9 +7,9 @@ public static class AppInfo
 
     public static string VersionText => $"{Version.Major}.{Version.Minor}.{Math.Max(0, Version.Build)}";
 
-    public const string Repo = "xdoofy92/ChestCounter";
+    public const string Repo = "edidit1557/ChestCounter";
     public static string RepoUrl => "https://github.com/" + Repo;
-    public static string IssuesUrl => RepoUrl + "/issues";
+    public static string IssuesUrl => "https://github.com/" + Repo + "/issues";
 
     /// <summary>Path of ChestCounter.exe when running as the published exe (null under "dotnet ChestCounter.dll").</summary>
     public static string? ExePath

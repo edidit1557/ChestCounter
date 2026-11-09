@@ -3,7 +3,7 @@ using System.Runtime.Versioning;
 namespace ChestCounter;
 
 /// <summary>Lo que muestra la ventana.</summary>
-public sealed record MonitorState(OverlayView View, IReadOnlyList<Profile> Profiles, string? CurrentKey, UpdateInfo? Update, string? Notice, bool AutoCloseOffer, ChestStats Stats);
+public sealed record MonitorState(OverlayView View, IReadOnlyList<Profile> Profiles, string? CurrentKey, string? Notice, bool AutoCloseOffer, ChestStats Stats);
 
 /// <summary>Estadísticas del perfil mostrado (la partida en curso cuenta ya en hoy y en la mejor partida).</summary>
 /// <param name="Today">Cofres de hoy.</param>
@@ -35,7 +35,7 @@ public sealed record LastMatchSummary(int Chests, int Destroyed, int Treasures, 
 public sealed record DayChests(DateTime Day, int Chests);
 
 /// <summary>
-/// Vigila los replays en segundo plano: escaneo, partida en curso, overlay, actualizaciones y cierre automático.
+/// Vigila los replays en segundo plano: escaneo, partida en curso, overlay y cierre automático.
 /// Solo el hilo de vigilancia toca los datos (el escaneo puede tardar minutos); la ventana pide cambios y
 /// recibe el estado publicado, así nunca se congela mientras se analizan replays.
 /// </summary>
@@ -57,9 +57,6 @@ public sealed class Monitor
     private volatile string? _shownKey;
     private volatile string? _shownName;
     private DateTime _nextScan = DateTime.UtcNow;
-    private volatile UpdateInfo? _update;
-    private bool _updateAnnounced;
-    private volatile bool _installing;
     private volatile string? _notice;
     private volatile bool _keepOpenRequested;
     private DateTime? _fortniteClosedSince;
@@ -81,13 +78,10 @@ public sealed class Monitor
     /// <summary>Abierto por el proceso en espera de Fortnite: se cierra solo cuando Fortnite se cierra.</summary>
     public bool AutoMode { get; set; }
 
-    /// <summary>Se pone a true cuando hay que reiniciar la nueva versión.</summary>
-    public bool RestartAfterUpdate { get; private set; }
-
     /// <summary>Estado nuevo. Se llama desde el hilo de vigilancia: la ventana debe usar BeginInvoke.</summary>
     public event Action<MonitorState>? Changed;
 
-    /// <summary>Pide cerrar la ventana (Fortnite cerrado, o nueva versión instalada). Desde otro hilo.</summary>
+    /// <summary>Pide cerrar la ventana cuando Fortnite se cierra. Desde otro hilo.</summary>
     public event Action? CloseRequested;
 
     public void Start()
@@ -101,19 +95,6 @@ public sealed class Monitor
 
         new Thread(Loop) { IsBackground = true, Name = "Vigilancia" }.Start();
 
-        // Nueva versión en GitHub: única conexión de red de la herramienta (se puede desactivar en ajustes).
-        if (_config.UpdateMode != "off")
-        {
-            _ = Task.Run(async () =>
-            {
-                var found = await Updater.CheckAsync();
-                if (found != null)
-                {
-                    _update = found;
-                    RequestPublish();
-                }
-            });
-        }
     }
 
     public void Stop()
@@ -124,7 +105,7 @@ public sealed class Monitor
         _watcher?.Dispose();
     }
 
-    /// <summary>Mensaje de estado de la ventana (por ejemplo, el reanálisis tras una actualización).</summary>
+    /// <summary>Mensaje de estado de la ventana.</summary>
     public void SetNotice(string? text)
     {
         _notice = text;
@@ -234,31 +215,6 @@ public sealed class Monitor
         RequestPublish();
     }
 
-    /// <summary>Descarga e instala la nueva versión en segundo plano; luego pide reiniciar.</summary>
-    public void InstallUpdate()
-    {
-        var u = _update;
-        if (u == null || _installing)
-        {
-            return;
-        }
-        _installing = true;
-        RequestPublish();
-        _ = Task.Run(() =>
-        {
-            var error = Updater.Install(u);
-            _installing = false;
-            if (error == null)
-            {
-                RestartAfterUpdate = true;
-                CloseRequested?.Invoke();
-                return;
-            }
-            _notice = L.T($"No se pudo actualizar: {error}", $"Update failed: {error}");
-            RequestPublish();
-        });
-    }
-
     /// <summary>Pide al hilo de vigilancia que publique el estado (se hace en cuanto puede).</summary>
     public void RequestPublish()
     {
@@ -298,7 +254,6 @@ public sealed class Monitor
                 ErrorLog.Write("Vigilancia", ex);
             }
 
-            changed |= CheckUpdate();
             if (_reportRequested)
             {
                 _reportRequested = false;
@@ -328,10 +283,8 @@ public sealed class Monitor
             NativeOverlay.Update(view);
         }
 
-        var notice = _installing
-            ? L.T("Descargando la actualización…", "Downloading the update…")
-            : _notice ?? (_autoCloseAt != null ? L.T("Fortnite está cerrado: el contador se cierra en 30 s.", "Fortnite is closed: the counter closes in 30 s.") : null);
-        var state = new MonitorState(view, Profiles.List(_data), Profiles.Current(_data, _config)?.Key, _update, notice, _autoCloseAt != null, BuildStats());
+        var notice = _notice ?? (_autoCloseAt != null ? L.T("Fortnite está cerrado: el contador se cierra en 30 s.", "Fortnite is closed: the counter closes in 30 s.") : null);
+        var state = new MonitorState(view, Profiles.List(_data), Profiles.Current(_data, _config)?.Key, notice, _autoCloseAt != null, BuildStats());
         Changed?.Invoke(state);
     }
 
@@ -413,31 +366,6 @@ public sealed class Monitor
             .Select(i => first.AddDays(i))
             .Select(d => new DayChests(d, sums.GetValueOrDefault(d)))
             .ToList();
-    }
-
-    /// <summary>Anuncia una versión nueva; en modo automático la instala cuando no hay partidas en curso. Devuelve true si hay que publicar.</summary>
-    private bool CheckUpdate()
-    {
-        var u = _update;
-        if (u == null || _updateAnnounced || _installing)
-        {
-            return false;
-        }
-
-        if (_config.UpdateMode == "auto")
-        {
-            var idle = !_tracker.IsLive && !_tracker.HasPending && !_tracker.IsFinishing;
-            if (!idle || AppInfo.ExePath == null)
-            {
-                return false;
-            }
-            _updateAnnounced = true;
-            InstallUpdate();
-            return true;
-        }
-
-        _updateAnnounced = true;
-        return true;
     }
 
     /// <summary>Opened with Fortnite: closes once Fortnite is closed and the last match is counted (5 min at most).</summary>

@@ -12,7 +12,7 @@ using Unreal.Core.Models.Enums;
 namespace ChestCounter;
 
 /// <summary>
-/// Reads one .replay file and extracts every container searched by the tracked player,
+/// Reads one .replay file and extracts every chest searched by the tracked player's team,
 /// together with the items that were tossed out of it.
 /// </summary>
 public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
@@ -89,7 +89,7 @@ public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
     private readonly List<GrantEvent> _grants = new();
 
     /// <summary>Bump when the analysis changes so that existing replays are re-analyzed.</summary>
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 10;
 
     private static readonly bool ProbeDebug = Environment.GetEnvironmentVariable("CHESTCOUNTER_DEBUG") == "4";
 
@@ -454,7 +454,7 @@ public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
     }
 
     /// <summary>
-    /// Parses <paramref name="file"/> and returns what the tracked player did with chests.
+    /// Parses <paramref name="file"/> and returns what the tracked player's team did with chests.
     /// </summary>
     /// <param name="username">Epic display name to track. If null/empty or not found, the replay owner is used.</param>
     public MatchRecord Analyze(Stream stream, string file, string? username)
@@ -517,6 +517,25 @@ public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
         var isRecorderTarget = recorderPs != null && targetPlayerStates.Contains(recorderPs.Value);
         var targetPawns = _pawnToPlayerState.Where(kv => targetPlayerStates.Contains(kv.Value)).Select(kv => kv.Key).ToHashSet();
 
+        // Chest totals represent the whole squad. Keep targetPawns separate because treasure ownership
+        // and treasure attribution remain specific to the tracked player.
+        var teamPawns = new HashSet<uint>(targetPawns);
+        if (target?.TeamIndex is int teamIndex && teamIndex > 0)
+        {
+            var teamPlayerIds = players
+                .Where(p => p.TeamIndex == teamIndex && p.Id != null)
+                .Select(p => p.Id!.Value)
+                .ToHashSet();
+            var teamPlayerStates = _playerStateToPlayerId
+                .Where(kv => teamPlayerIds.Contains(kv.Value))
+                .Select(kv => kv.Key)
+                .ToHashSet();
+            foreach (var pawn in _pawnToPlayerState.Where(kv => teamPlayerStates.Contains(kv.Value)).Select(kv => kv.Key))
+            {
+                teamPawns.Add(pawn);
+            }
+        }
+
         // --- Everything the target searched / interacted with ------------------------------------
         var interactions = _searches
             .Where(s => s.SearcherPawn is uint p && targetPawns.Contains(p))
@@ -525,21 +544,25 @@ public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
             .ToList();
 
         var chests = new List<ChestRecord>();
+        var personalChests = new List<ChestRecord>();
         var others = new Dictionary<string, int>();
-        foreach (var search in interactions)
+        var trackedChestKeys = interactions
+            .Where(s => ChestKinds.IsChest(s.Kind))
+            .Select(s => s.ActorKey)
+            .ToHashSet(StringComparer.Ordinal);
+        var teamChestSearches = _searches
+            .Where(s => s.SearcherPawn is uint p && teamPawns.Contains(p))
+            .OrderBy(s => s.Time)
+            .Select(s => (s.Time, Kind: ChestKinds.Classify(s.Label), s.Label, s.ActorKey, s.Destroyed))
+            .Where(s => ChestKinds.IsChest(s.Kind));
+        foreach (var search in teamChestSearches)
         {
-            if (!ChestKinds.IsChest(search.Kind))
-            {
-                others[search.Kind] = others.GetValueOrDefault(search.Kind) + 1;
-                continue;
-            }
-
             var items = _tosses
                 .Where(t => t.Time >= search.Time - 0.25f && t.Time <= search.Time + 0.6f)
                 .Select(t => t.Item)
                 .ToList();
 
-            chests.Add(new ChestRecord
+            var chest = new ChestRecord
             {
                 TimeSeconds = MathF.Round(search.Time, 1),
                 Kind = search.Kind,
@@ -547,7 +570,17 @@ public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
                 Destroyed = search.Destroyed,
                 Items = items,
                 TreasureItems = items.Where(i => TreasureItem.IsMatch(i)).ToList(),
-            });
+            };
+            chests.Add(chest);
+            if (trackedChestKeys.Contains(search.ActorKey))
+            {
+                personalChests.Add(chest);
+            }
+        }
+
+        foreach (var search in interactions.Where(s => !ChestKinds.IsChest(s.Kind)))
+        {
+            others[search.Kind] = others.GetValueOrDefault(search.Kind) + 1;
         }
 
         if (Environment.GetEnvironmentVariable("CHESTCOUNTER_DEBUG") == "1")
@@ -626,7 +659,7 @@ public sealed class ReplayAnalyzer : FortniteReplayReader.ReplayReader
         var equippedByMe = _equips.Where(e => targetPawns.Contains(e.Pawn)).OrderBy(e => e.Time).ToList();
 
         // 3) Treasure item thrown out of a container as a pickup (not observed so far, kept just in case).
-        foreach (var chest in chests.Where(c => c.TreasureItems.Count > 0))
+        foreach (var chest in personalChests.Where(c => c.TreasureItems.Count > 0))
         {
             foreach (var item in chest.TreasureItems.Select(TreasureNames.Friendly).Distinct())
             {

@@ -11,9 +11,6 @@ namespace ChestCounter;
 [SupportedOSPlatform("windows")]
 public sealed class SettingsForm : Form
 {
-    private static readonly string[] UpdateLabels = { L.T("Preguntar", "Ask"), L.T("Automáticas", "Automatic"), L.T("Nunca", "Never") };
-    private static readonly string[] UpdateModes = { "prompt", "auto", "off" };
-
     // Misma rejilla que la ventana principal: columna izquierda y derecha.
     private const int LeftX = 15, LeftW = 267, RightX = 297, RightW = 280;
     private const int MaxInitial = 1_000_000;
@@ -21,7 +18,6 @@ public sealed class SettingsForm : Form
     private readonly Monitor _monitor;
     private readonly ToggleSwitch _fortnite;
     private readonly ToggleSwitch _report;
-    private readonly PillButton[] _updates = new PillButton[UpdateModes.Length];
     private readonly TextBox _folder;
     private readonly TextBox _initial;
     private bool _loading;
@@ -31,7 +27,7 @@ public sealed class SettingsForm : Form
         _monitor = monitor;
         var config = monitor.Config;
 
-        Text = L.T("Ajustes", "Settings");
+        Text = L.T("Ajustes", "Settings", "설정");
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96, 96);
         Font = Theme.Text();
@@ -46,7 +42,7 @@ public sealed class SettingsForm : Form
         Icon = AppIcon.Load();
 
         // Cabecera, como en la ventana principal.
-        Lbl(this, L.T("AJUSTES", "SETTINGS"), 8.5f, FontStyle.Bold, Theme.Cyan, new Point(LeftX, 14), new Size(200, 18));
+        Lbl(this, L.T("AJUSTES", "SETTINGS", "설정"), 8.5f, FontStyle.Bold, Theme.Cyan, new Point(LeftX, 14), new Size(200, 18));
         Lbl(this, L.T($"Versión {AppInfo.VersionText}", $"Version {AppInfo.VersionText}"), 8.0f, FontStyle.Regular, Theme.Muted,
             new Point(RightX, 13), new Size(RightW, 18), ContentAlignment.TopRight);
 
@@ -54,9 +50,9 @@ public sealed class SettingsForm : Form
 
         // Inicio: dos interruptores.
         var start = AddCard(LeftX, 40, LeftW, 100, 16);
-        CardTitle(start, L.T("Inicio", "Startup"));
-        _fortnite = AddToggleRow(start, L.T("Abrir con Fortnite", "Open with Fortnite"),
-            L.T("Cuenta tus partidas sin pensar en ello", "Counts your matches without thinking about it"), 24, config.StartWithFortnite);
+        CardTitle(start, L.T("Inicio", "Startup", "시작"));
+        _fortnite = AddToggleRow(start, L.T("Abrir con Fortnite", "Open with Fortnite", "포트나이트와 함께 실행"),
+            L.T("Cuenta tus partidas sin pensar en ello", "Counts your matches without thinking about it", "경기를 자동으로 기록합니다"), 24, config.StartWithFortnite);
         _fortnite.CheckedChanged += (_, _) =>
         {
             if (_loading)
@@ -73,29 +69,14 @@ public sealed class SettingsForm : Form
                     L.T("Ajustes", "Settings"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         };
-        _report = AddToggleRow(start, L.T("Abrir el informe al iniciar", "Open the report at startup"), null, 64, config.OpenReportOnStart);
+        _report = AddToggleRow(start, L.T("Abrir el informe al iniciar", "Open the report at startup", "시작할 때 리포트 열기"), null, 64, config.OpenReportOnStart);
         _report.CheckedChanged += (_, _) => { if (!_loading) _monitor.Change(c => c.OpenReportOnStart = _report.Checked); };
 
-        // Actualizaciones: tres píldoras.
-        var updates = AddCard(LeftX, 149, LeftW, 74, 14);
-        CardTitle(updates, L.T("Actualizaciones", "Updates"));
-        var pillW = (LeftW - 26 - 2 * 6) / 3;
-        for (var i = 0; i < UpdateModes.Length; i++)
-        {
-            var index = i;
-            var pill = new PillButton { Text = UpdateLabels[i], Location = new Point(13 + i * (pillW + 6), 30), Size = new Size(pillW, 32), Radius = 10, Font = Theme.Text(8.5f, FontStyle.Bold) };
-            pill.Click += (_, _) => SelectUpdateMode(index, save: true);
-            updates.Controls.Add(pill);
-            _updates[i] = pill;
-        }
-        var mode = Array.IndexOf(UpdateModes, config.UpdateMode);
-        SelectUpdateMode(mode < 0 ? 0 : mode, save: false);
-
         // Carpeta de replays y datos.
-        var folderCard = AddCard(LeftX, 232, LeftW, 94, 14);
-        CardTitle(folderCard, L.T("Carpeta de replays", "Replays folder"));
+        var folderCard = AddCard(LeftX, 149, LeftW, 94, 14);
+        CardTitle(folderCard, L.T("Carpeta de replays", "Replays folder", "리플레이 폴더"));
         _folder = AddField(folderCard, new Point(13, 26), LeftW - 26 - 72, config.DemosFolder);
-        var browse = new PillButton { Text = L.T("Cambiar", "Change"), Location = new Point(LeftW - 13 - 66, 26), Size = new Size(66, 30), Radius = 10, Font = Theme.Text(8.5f, FontStyle.Bold) };
+        var browse = new PillButton { Text = L.T("Cambiar", "Change", "변경"), Location = new Point(LeftW - 13 - 66, 26), Size = new Size(66, 30), Radius = 10, Font = Theme.Text(8.5f, FontStyle.Bold) };
         browse.Click += (_, _) => ChooseFolder();
         folderCard.Controls.Add(browse);
         Lbl(folderCard, L.T("Tus datos se guardan en ", "Your data is saved in ") + store.Folder,
@@ -105,7 +86,7 @@ public sealed class SettingsForm : Form
 
         // Cofres de antes del contador: cifra grande en ámbar, editable, con − / +.
         var initial = AddCard(RightX, 40, RightW, 100, 16);
-        CardTitle(initial, L.T("Cofres antes del contador", "Chests before the counter"));
+        CardTitle(initial, L.T("Cofres antes del contador", "Chests before the counter", "이전 누적 상자 수"));
         _initial = new TextBox
         {
             BorderStyle = BorderStyle.None,
@@ -140,14 +121,14 @@ public sealed class SettingsForm : Form
 
         // OBS: dirección y estado.
         var obsCard = AddCard(RightX, 149, RightW, 74, 14);
-        CardTitle(obsCard, L.T("Overlay para OBS", "Overlay for OBS"));
+        CardTitle(obsCard, L.T("Overlay para OBS", "Overlay for OBS", "OBS 오버레이"));
         var obsUrl = ObsServer.Url;
         var stateCard = new Card { Location = new Point(RightW - 13 - 70, 6), Size = new Size(70, 18), Radius = 9, BackColor = Theme.Panel };
         Lbl(stateCard, obsUrl != null ? L.T("● ACTIVO", "● ON") : L.T("● NO", "● OFF"), 7.0f, FontStyle.Bold,
             obsUrl != null ? Theme.Mint : Theme.Red, new Point(0, 0), new Size(70, 18), ContentAlignment.MiddleCenter);
         obsCard.Controls.Add(stateCard);
         var obs = AddField(obsCard, new Point(13, 30), RightW - 26 - 72, obsUrl ?? L.T("Puerto ocupado", "Port in use"));
-        var copy = new PillButton { Text = L.T("Copiar", "Copy"), Location = new Point(RightW - 13 - 66, 30), Size = new Size(66, 30), Radius = 10, Font = Theme.Text(8.5f, FontStyle.Bold), Enabled = obsUrl != null };
+        var copy = new PillButton { Text = L.T("Copiar", "Copy", "복사"), Location = new Point(RightW - 13 - 66, 30), Size = new Size(66, 30), Radius = 10, Font = Theme.Text(8.5f, FontStyle.Bold), Enabled = obsUrl != null };
         copy.Click += (_, _) =>
         {
             try
@@ -165,14 +146,14 @@ public sealed class SettingsForm : Form
 
         // Atajos del overlay.
         var keys = AddCard(RightX, 232, RightW, 45, 12);
-        Lbl(keys, L.T("Atajos del overlay", "Overlay shortcuts"), 7.5f, FontStyle.Regular, Theme.Muted, new Point(13, 6), new Size(RightW - 26, 13));
+        Lbl(keys, L.T("Atajos del overlay", "Overlay shortcuts", "오버레이 단축키"), 7.5f, FontStyle.Regular, Theme.Muted, new Point(13, 6), new Size(RightW - 26, 13));
         Lbl(keys, L.T("Ctrl+Mayús+O mostrar  ·  Ctrl+Mayús+L fijar", "Ctrl+Shift+O show  ·  Ctrl+Shift+L lock"),
             8.0f, FontStyle.Bold, Theme.Ink, new Point(13, 21), new Size(RightW - 26, 18));
 
         // Cerrar, en el sitio de los botones de la ventana principal.
         var close = new PillButton
         {
-            Text = L.T("Cerrar", "Close"),
+            Text = L.T("Cerrar", "Close", "닫기"),
             Location = new Point(RightX, 286),
             Size = new Size(RightW, 40),
             Radius = 12,
@@ -191,23 +172,6 @@ public sealed class SettingsForm : Form
     {
         base.OnHandleCreated(e);
         Theme.Chrome(Handle);
-    }
-
-    private void SelectUpdateMode(int index, bool save)
-    {
-        for (var i = 0; i < _updates.Length; i++)
-        {
-            var on = i == index;
-            _updates[i].BackColor = on ? Theme.Accent : Theme.Panel;
-            _updates[i].HoverColor = on ? Theme.AccentHover : Theme.PanelHover;
-            _updates[i].ForeColor = on ? Theme.AccentInk : Theme.Ink;
-            _updates[i].Invalidate();
-        }
-        if (save)
-        {
-            var chosen = UpdateModes[index];
-            _monitor.Change(c => c.UpdateMode = chosen);
-        }
     }
 
     private int ParseInitial() =>

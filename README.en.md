@@ -1,12 +1,12 @@
 <div align="center">
 
-[Español](README.md) · **English**
+[Español](README.es.md) · **English** · [한국어](README.md)
 
 # Fortnite Chest Counter
 
 [![version](https://img.shields.io/github/v/release/xdoofy92/ChestCounter?style=flat-square&label=version&color=e8b04b)](../../releases/latest) [![downloads](https://img.shields.io/github/downloads/xdoofy92/ChestCounter/total?style=flat-square&label=downloads&color=e8b04b)](../../releases) ![Windows 10 | 11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a7bd5?style=flat-square) [![license](https://img.shields.io/github/license/xdoofy92/ChestCounter?style=flat-square&label=license&color=555)](LICENSE)
 
-**Counts every chest you open in Fortnite, match after match, with an in-game overlay.**
+**Counts every chest your team opens in Fortnite, match after match, with an in-game overlay.**
 
 <img src="docs/overlay-espera.png" alt="Overlay between two matches" width="300">&nbsp;&nbsp;<img src="docs/overlay-en-curso.png" alt="Overlay during a match" width="300">
 
@@ -16,9 +16,9 @@
 
 ---
 
-Chest Counter reads the replays Fortnite saves after each match and keeps a running count of the chests you opened, plus the **treasure hunt treasures** your chests gave you. An always-on-top overlay shows your totals while you play, and a detailed report keeps your whole history.
+Chest Counter reads the replays Fortnite saves after each match and keeps a running count of the chests your **whole team** opened, plus the **treasure hunt treasures** you received. An always-on-top overlay shows your totals while you play, and a detailed report keeps your whole history.
 
-> It counts the chests **you opened**. It does not show where chests are on the map.
+> It counts chests opened by **your whole team**, including you. It does not show where chests are on the map.
 
 ## How it works (and why it is safe)
 
@@ -27,7 +27,7 @@ Fortnite can record a **replay file** of every match on your PC. Chest Counter r
 - ✅ **Only reads replay files**: the `.replay` files Fortnite writes to `%LOCALAPPDATA%\FortniteGame\Saved\Demos`. They are opened read-only and never modified.
 - ✅ **No game modification**: nothing in the Fortnite installation folder is touched, no file is added or patched.
 - ✅ **No access to the game's memory**: the tool never reads, writes or injects anything into the Fortnite process. It does not interact with the running game at all.
-- ✅ **No data sent anywhere**: no login, no Epic account access, no telemetry. The only network access is the check for a new version on GitHub, which can be turned off in the settings.
+- ✅ **No remote network access**: no login, no Epic account access, no telemetry, and no GitHub version checks. The local OBS overlay is served only on your PC.
 - ✅ **Lightweight**: runs at low priority (and in "efficiency mode" on Windows 11), sleeps between matches, and the overlay is only redrawn when a number changes.
 
 > [!IMPORTANT]
@@ -41,7 +41,7 @@ Because Fortnite only writes the replay's decryption key when the match ends, ch
 2. Turn on replays in Fortnite (see above).
 3. Run `ChestCounter.exe`.
    > Windows may show *"Windows protected your PC"* because the exe is not signed. Click *More info → Run anyway*.
-4. A short setup (Yes / No dialogs) checks your **replays folder**, offers to count the **replays already on your PC**, and offers to **open the counter automatically when Fortnite starts**. The language follows Windows: **Spanish** if Windows is in Spanish, **English** otherwise.
+4. A short setup (Yes / No dialogs) checks your **replays folder**, offers to count the **replays already on your PC**, and offers to **open the counter automatically when Fortnite starts**. The interface language follows Windows: **Spanish** or **Korean** when Windows uses those languages, **English** otherwise.
 
 <p align="center"><img src="docs/setup.png" alt="First launch setup" width="760"></p>
 
@@ -83,11 +83,11 @@ If another program already uses Ctrl+Shift+O or Ctrl+Shift+L, the tool shows a n
 
 ### Main window
 
-The window has three buttons: **Overlay** (show or hide the overlay; green dot = on, red = off), **Report** (opens `report.html`) and **Settings**. The installed version is shown in the window title. When a new version is available, an install button appears; when Fortnite closes, a notice lets you keep the counter open (click it). The profile selector appears when there are several accounts.
+The window has three buttons: **Overlay** (show or hide the overlay; green dot = on, red = off), **Report** (opens `report.html`) and **Settings**. The installed version is shown in the window title. When Fortnite closes, a notice lets you keep the counter open (click it). The profile selector appears when there are several accounts.
 
 The window can be **resized and maximized**: everything grows in proportion (cards, figures and chart) and no text gets cut off; if a figure does not fit its card, its font shrinks a little.
 
-In **Settings** you can open with Fortnite, open the report at startup, choose the updates, type the **chests opened before the counter** (an estimate added to your total), copy the **overlay address for OBS** and change the replays folder. The installed version is shown at the bottom.
+In **Settings** you can open with Fortnite, open the report at startup, type the **team chests opened before the counter** (an estimate added to your total), copy the **overlay address for OBS** and change the replays folder.
 
 <p align="center"><img src="docs/settings.png" alt="Settings" width="400"></p>
 
@@ -119,7 +119,7 @@ The replays saved on a PC are normally those of its player, so there is **no nam
 
 ## Updates
 
-At startup, the counter checks GitHub for a new version. When there is one, it tells you, and the install button downloads it, checks it and restarts the counter: your history and settings are kept. In the settings (the **Settings** button) you can choose between *offered* (default), *installed automatically* (only between two matches) or *off* (no network access at all).
+The app never checks for or installs updates automatically, so it stays on the version you downloaded. To change versions, download the desired `ChestCounter.exe` from [Releases](../../releases) and replace the existing file while the app is closed.
 
 ## Your data
 
